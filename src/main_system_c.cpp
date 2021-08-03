@@ -25,9 +25,9 @@ void MainSystem_C::execute()
     window.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
 
     // Displaying a cube
-    cv::viz::WCube cube_widget(cv::Point3f(1.5,1.5,3.0), cv::Point3f(-1.5,-1.5,0.0), true, cv::viz::Color::blue());
-    cube_widget.setRenderingProperty(cv::viz::LINE_WIDTH, 4.0);
-    window.showWidget("Cube Widget", cube_widget);
+    // cv::viz::WCube cube_widget(cv::Point3f(1.5,1.5,3.0), cv::Point3f(-1.5,-1.5,0.0), true, cv::viz::Color::blue());
+    // cube_widget.setRenderingProperty(cv::viz::LINE_WIDTH, 4.0);
+    // window.showWidget("Cube Widget", cube_widget);
 
     // Guardamos los puntos de un modelo de camara
     std::vector<cv::Point3d> cam_model_lines = getFrameCoordPairs(Identity,settings_);
@@ -67,7 +67,7 @@ void MainSystem_C::execute()
     cv::Mat i0,i1,d0,d1;
     int init_frame = 0;
     i0 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(init_frame));
-    d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(init_frame), CV_LOAD_IMAGE_ANYDEPTH);
+    d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(init_frame), cv::IMREAD_ANYDEPTH);
 	// Evaluating Random Forest
     double sc;
 	Hypothesis h0 = forest_->Test_Frame(i0,d0,sc);
@@ -100,8 +100,8 @@ void MainSystem_C::execute()
         // Reading rgbd pairs w/o groundtruth synchronization
         i0 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(frame-1));
         i1 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(frame));
-        d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame-1), CV_LOAD_IMAGE_ANYDEPTH);
-        d1 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame), CV_LOAD_IMAGE_ANYDEPTH);
+        d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame-1), cv::IMREAD_ANYDEPTH);
+        d1 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame), cv::IMREAD_ANYDEPTH);
 
         double err;
         direct_odometry_->doAlignment(i0,d0,i1,xi,err); // Estimamos el movimiento
@@ -148,7 +148,8 @@ void MainSystem_C::execute()
                 p_abs_rbm = EigenAffine3d_2_CvAffine3d(h.pose_);
             }
         }
-        std::cout << "Transformacion\n" << p_abs_rbm.matrix << std::endl; 
+        std::cout << "Transformacion\n" << p_abs_rbm.matrix << std::endl;
+        cvAbsPoses.push_back(p_abs_rbm);
         
         // Agregamos el punto de referencia del actual pose estimado
         cam_path.push_back(p_abs_rbm.translation());
@@ -253,5 +254,7 @@ void MainSystem_C::execute()
     } // Fin de iterar sobre los frames
 
     window.spin();
+
+    displayReconstructionPreview(window);
 
 } // Fin de la funcion execute

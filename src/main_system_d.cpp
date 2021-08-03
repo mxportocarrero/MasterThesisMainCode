@@ -22,14 +22,14 @@ void MainSystem_D::execute()
     // Declaring Viz Objects for visualtion
     // ------------------------------------
     cv::viz::Viz3d window("Coordinate Frame");
-    window.setBackgroundColor(cv::viz::Color::black(),cv::viz::Color::red()); // Cuando pones los dos colores dan un tono de interpolacion
+    //window.setBackgroundColor(cv::viz::Color::white(),cv::viz::Color::white()); // Cuando pones los dos colores dan un tono de interpolacion
     window.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
 
     // Displaying a cube
     //-------------------
-    cv::viz::WCube cube_widget(cv::Point3f(1.5,1.5,3.0), cv::Point3f(-1.5,-1.5,0.0), true, cv::viz::Color::blue());
-    cube_widget.setRenderingProperty(cv::viz::LINE_WIDTH, 4.0);
-    window.showWidget("Cube Widget", cube_widget);
+    //cv::viz::WCube cube_widget(cv::Point3f(1.5,1.5,3.0), cv::Point3f(-1.5,-1.5,0.0), true, cv::viz::Color::blue());
+    //cube_widget.setRenderingProperty(cv::viz::LINE_WIDTH, 4.0);
+    //window.showWidget("Cube Widget", cube_widget);
 
     // Guardamos los puntos de un modelo de camara
     std::vector<cv::Point3d> cam_model_lines = getFrameCoordPairs(Identity,settings_);
@@ -69,13 +69,14 @@ void MainSystem_D::execute()
     cv::Mat i0,i1,d0,d1;
     int init_frame = 0;
     i0 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(init_frame));
-    d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(init_frame), CV_LOAD_IMAGE_ANYDEPTH);
+    d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(init_frame), cv::IMREAD_ANYDEPTH);
 	// Evaluating Random Forest
     double sc;
 	Hypothesis h0 = forest_->Test_Frame(i0,d0,sc);
 
 	cv::Affine3d h0_tmp = EigenAffine3d_2_CvAffine3d(h0.pose_);
 	p_abs_rbm = h0_tmp; // Actualizamos nuestra primera matriz
+    cvAbsPoses.push_back(p_abs_rbm); // Agregando a nuestro vector de CV Poses
 
     cam_path[0] = h0_tmp.translation();
 
@@ -95,6 +96,7 @@ void MainSystem_D::execute()
     // Iterating over frames // Estas iteraciones se realizan sobre la sequencia de pares rgbd
     // --------------------- // no importa si no tienen groundtruth asociado
     for (int frame = init_frame + 1; frame < data_->rgb_filenames_.size(); ++frame)
+    //for (int frame = init_frame + 1; frame < 500; ++frame)
     {
         myVector6d xi; // instead of Eigen::VectorXd xi(6)
         xi << 0,0,0,0,0,0;
@@ -102,8 +104,8 @@ void MainSystem_D::execute()
         // Reading rgbd pairs w/o groundtruth synchronization
         i0 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(frame-1));
         i1 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(frame));
-        d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame-1), CV_LOAD_IMAGE_ANYDEPTH);
-        d1 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame), CV_LOAD_IMAGE_ANYDEPTH);
+        d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame-1), cv::IMREAD_ANYDEPTH);
+        d1 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame), cv::IMREAD_ANYDEPTH);
 
         double err;
         direct_odometry_->doAlignment(i0,d0,i1,xi,err); // Estimamos el movimiento
@@ -181,8 +183,11 @@ void MainSystem_D::execute()
                 //std::cout << "Transformacion\n" << p_abs_rbm.matrix << std::endl;
             }
 
-        }
-        std::cout << "Transformacion\n" << p_abs_rbm.matrix << std::endl; 
+        } // Fin de If de validacion
+
+        // Imprimiendo la transformacion final (cv::Affine3d)
+        std::cout << "Transformacion\n" << p_abs_rbm.matrix << std::endl;
+        cvAbsPoses.push_back(p_abs_rbm);
         
         // Agregamos el punto de referencia del actual pose estimado
         cam_path.push_back(p_abs_rbm.translation());
@@ -192,6 +197,7 @@ void MainSystem_D::execute()
         int matched_frame; cv::Affine3d affine_t;
         if(data_->check_timestamp_rgbd_match(data_->timestamp_rgbd_.at(frame), matched_frame))
         {
+            std::cout << "matched_frame " << matched_frame << std::endl;
             Pose pose_gt = data_->getPose(matched_frame);
 
             printMat44(pose_gt,"Groundtruth Pose");
@@ -292,7 +298,7 @@ void MainSystem_D::execute()
         //}
         // FIN DE DISPLAY ESTIMATED CAMERA POSE
 
-        window.spinOnce();
+        //window.spinOnce(1,true);
         //window.spin();
 
         // DISPLAY RGBD PAIRS
@@ -302,9 +308,12 @@ void MainSystem_D::execute()
         show_depth_image("Display Depth", d0);
 
         cv::waitKey(1); // Desactivar para analizar frame a frame
+        //cv::waitKey();
 
     } // Fin de iterar sobre los frames
 
     window.spin();
+
+    displayReconstructionPreview(window);
 
 } // Fin de la funcion execute

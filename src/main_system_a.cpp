@@ -18,6 +18,7 @@ void MainSystem_A::execute()
     cv::Mat a(4,4,CV_32FC1,&Identity.m);
     a.convertTo(a, CV_64FC1);
     cv::Affine3d p_abs_rbm(a); // Usaremos la funcion affine3d de opencv para acumular las matrices
+    cvAbsPoses.push_back(p_abs_rbm);
 
     // Declaring Viz Objects for visualtion
     // ------------------------------------
@@ -25,9 +26,9 @@ void MainSystem_A::execute()
     window.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
 
     // Displaying a cube
-    cv::viz::WCube cube_widget(cv::Point3f(1.5,1.5,3.0), cv::Point3f(-1.5,-1.5,0.0), true, cv::viz::Color::blue());
-    cube_widget.setRenderingProperty(cv::viz::LINE_WIDTH, 4.0);
-    window.showWidget("Cube Widget", cube_widget);
+    //cv::viz::WCube cube_widget(cv::Point3f(1.5,1.5,3.0), cv::Point3f(-1.5,-1.5,0.0), true, cv::viz::Color::blue());
+    //cube_widget.setRenderingProperty(cv::viz::LINE_WIDTH, 4.0);
+    //window.showWidget("Cube Widget", cube_widget);
 
     // Guardamos los puntos de un modelo de camara
     std::vector<cv::Point3d> cam_model_lines = getFrameCoordPairs(Identity,settings_);
@@ -75,8 +76,8 @@ void MainSystem_A::execute()
         // Reading rgbd pairs w/o groundtruth synchronization
         cv::Mat i0 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(frame-1));
         cv::Mat i1 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(frame));
-        cv::Mat d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame-1), CV_LOAD_IMAGE_ANYDEPTH);
-        cv::Mat d1 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame), CV_LOAD_IMAGE_ANYDEPTH);
+        cv::Mat d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame-1), cv::IMREAD_ANYDEPTH);
+        cv::Mat d1 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame), cv::IMREAD_ANYDEPTH);
 
         double err;
         direct_odometry_->doAlignment(i0,d0,i1,xi,err); // Estimamos el movimiento
@@ -101,6 +102,7 @@ void MainSystem_A::execute()
             cv::Affine3d last_pose = TwistCoord_2_CvAffine3d(xi);
 
             p_abs_rbm = p_abs_rbm * last_pose;
+            cvAbsPoses.push_back(p_abs_rbm);
             //std::cout << "Transformacion\n" << p_abs_rbm.matrix << std::endl;
         //}
         //else
@@ -243,7 +245,6 @@ void MainSystem_A::execute()
     
     std::cout << "Eigen Affine" << std::endl << affine_eigen.matrix() << std::endl;
 
-
     // Actualizamos nuestro vector de correspondencias para calcular el error
     for (int k = 0; k < matched_coord_data_.size(); ++k)
     {
@@ -255,7 +256,15 @@ void MainSystem_A::execute()
         // usamos la parte linear de la matriz affine3d
         Eigen::Matrix3d r = affine_eigen.linear() * matched_rot_data_[k];
         matched_rot_data_[k] = r;
-
     }
+
+    // Actualizamos el vector de RigidBodyMotions con la Transformacion final calculada
+    for (int i = 0; i < cvAbsPoses.size(); ++i)
+        cvAbsPoses[i] = affine_t * cvAbsPoses[i];
+
+    window.spin();
+
+    displayReconstructionPreview(window);
+
 
 } // Fin de la funcion execute

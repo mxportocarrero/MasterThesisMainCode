@@ -2,7 +2,7 @@ APP_NAME = app
 
 SRC_DIR = src/
 
-FLAGS = `pkg-config opencv --cflags --libs` -mavx2 -O3
+FLAGS = `pkg-config opencv4 --cflags --libs` -mavx2 -O3
 
 others = linear_algebra_functions.o utilities.o mean_shift.o kabsch.o
 forest_objects = feature.o node.o tree.o forest.o

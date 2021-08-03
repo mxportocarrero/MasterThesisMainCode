@@ -25,9 +25,9 @@ void MainSystem_B::execute()
     window.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
 
     // Displaying a cube
-    cv::viz::WCube cube_widget(cv::Point3f(1.5,1.5,3.0), cv::Point3f(-1.5,-1.5,0.0), true, cv::viz::Color::blue());
-    cube_widget.setRenderingProperty(cv::viz::LINE_WIDTH, 4.0);
-    window.showWidget("Cube Widget", cube_widget);
+    // cv::viz::WCube cube_widget(cv::Point3f(1.5,1.5,3.0), cv::Point3f(-1.5,-1.5,0.0), true, cv::viz::Color::blue());
+    // cube_widget.setRenderingProperty(cv::viz::LINE_WIDTH, 4.0);
+    // window.showWidget("Cube Widget", cube_widget);
 
     // Guardamos los puntos de un modelo de camara
     std::vector<cv::Point3d> cam_model_lines = getFrameCoordPairs(Identity,settings_);
@@ -74,8 +74,8 @@ void MainSystem_B::execute()
         // Reading rgbd pairs w/o groundtruth synchronization
         cv::Mat i0 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(frame-1));
         cv::Mat i1 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(frame));
-        cv::Mat d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame-1), CV_LOAD_IMAGE_ANYDEPTH);
-        cv::Mat d1 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame), CV_LOAD_IMAGE_ANYDEPTH);
+        cv::Mat d0 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame-1), cv::IMREAD_ANYDEPTH);
+        cv::Mat d1 = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(frame), cv::IMREAD_ANYDEPTH);
 
         double err;
         direct_odometry_->doAlignment(i0,d0,i1,xi,err); // Estimamos el movimiento
@@ -228,5 +228,9 @@ void MainSystem_B::execute()
         cv::waitKey(1); // Desactivar para analizar frame a frame
 
     } // Fin de iterar sobre los frames
+
+    window.spin();
+
+    displayReconstructionPreview(window);
 
 } // Fin de la funcion execute

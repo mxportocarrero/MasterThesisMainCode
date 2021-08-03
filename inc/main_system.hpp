@@ -26,6 +26,10 @@ protected:
 	std::vector<Eigen::Matrix3d> matched_rot_data_;
 	std::vector<Eigen::Matrix3d> matched_rot_gt_;
 
+	// Vector para previsualizar la reconstruccion
+	// Llenado con los RBM calculados por el sistema
+	std::vector<cv::Affine3d> cvAbsPoses;
+
 public:
 	//Constructor
 	MainSystemBase(Dataset *data, Settings *settings, DirectOdometryBase *direct_odometry, std::string forest_file_name)
@@ -40,9 +44,73 @@ public:
 	// Esta funcion nos permitira previsualizar la posible reconstrucción
 	// de la escena basandonos en las RBM calculadas por el algoritmo
 	// Resultaria similar a la hecha en Forest.VerifyLabelData
-	void displayReconstructionPreview(const cv::viz::Viz3d *window){
-		
-	}
+	void displayReconstructionPreview(cv::viz::Viz3d &window){
+		std::vector<LabeledPixel> labeled_data;
+
+		// Objeto random para la toma de muestras
+		Random *random = new Random();
+
+		std::vector<cv::Point3d> tmp_pos;
+		std::vector<cv::Vec3b> tmp_color;
+		int num_pixel_per_frame = 2000;
+		cv::viz::Viz3d pc("temp pointcloud");
+		for (int curr_frame = 0; curr_frame < data_->getNumFrames(); ++curr_frame)
+		{
+			//std::cout << "frame" << curr_frame << std::endl;
+			//std::cout << "Transformacion\n" << cvAbsPoses[curr_frame].matrix << std::endl;
+			//std::vector<cv::Point3d> tmp_pos1;
+			//std::vector<cv::Vec3b> tmp_color1;
+			//cv::Mat controller1 = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(curr_frame));
+			//cv::Mat controller2 = data_->getRgbImage(curr_frame);
+
+			cv::Mat depth_image = cv::imread(data_->dataset_path_ + "/" + data_->depth_filenames_.at(curr_frame), cv::IMREAD_ANYDEPTH);
+			cv::Mat image = cv::imread(data_->dataset_path_ + "/" + data_->rgb_filenames_.at(curr_frame));
+
+			for (int j = 0; j < num_pixel_per_frame; ++j)
+			{
+				int row = random->Next(0, settings_->image_height_);
+				int col = random->Next(0, settings_->image_width_);
+
+				double Z = (double) depth_image.at<ushort>(row,col);
+
+				if (Z != 0.0)
+				{
+					Z = Z / (double)settings_->depth_factor_;
+					if(Z < 4.0){
+					double Y = (row - settings_->cy) * Z / settings_->fy;
+					double X = (col - settings_->cx) * Z / settings_->fx;
+
+					cv::Point3d base_point(X,Y,Z);
+					cv::Point3d label = cvAbsPoses[curr_frame] * base_point;
+
+					tmp_pos.push_back(label);
+					tmp_color.push_back(image.at<cv::Vec3b>( cv::Point2i(col,row) ));
+					//tmp_pos1.push_back(label);
+					//tmp_color1.push_back(image.at<cv::Vec3b>( cv::Point2i(col,row) ));					
+					}
+				} else { // Pixel invalido de valor 0
+					--j;
+				}
+			} // Fin de iterar sobre los pixeles
+
+			// Agregando la nube de puntos a la referencia del visualizador
+			// ---------------------------
+			// pc.showWidget("pc"+std::to_string(curr_frame),cv::viz::WCloud(tmp_pos1,tmp_color1));
+			// pc.spinOnce(1,true);
+			//pc.spin();
+
+			// cv::imshow("controller1",controller1);
+			// cv::imshow("controller2",controller2);
+			// cv::waitKey();
+
+		} // Fin de Iterar sobre los frame
+
+		//pc.spin();
+
+		window.showWidget("pointcloud",cv::viz::WCloud(tmp_pos,tmp_color));
+		window.spin();
+
+	} // Fin de la funcion displayReconstructionPreview
 
 	// Funcion para evaluar las correspondencias entre el sistema y el algoritmo
 	void EvalSystem(std::string file_output)
@@ -83,7 +151,7 @@ public:
 				rot_error = 2.9999;
 
 	   		rot_error = ( rot_error - 1.0 ) / 2.0;
-	   		rot_error = acos(rot_error) * 180.0 / M_PI;
+	   		rot_error = acos(rot_error) * 180.0 / M_PI; // conversion from radians to degrees
 
 	   		myfile << rot_error << "\n";
 

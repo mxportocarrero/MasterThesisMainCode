@@ -149,7 +149,7 @@ Dataset::Dataset(std::string dataset_path):
             //std::cout << "rgbd: " << rgb_filenames_[ts_rgbd_index] << " gt: " << timestamp_groundtruth_[ts_gt_index] << std::endl;
 
             cv::Mat img_rgb = cv::imread(dataset_path_ + "/" + rgb_filenames_.at(ts_rgbd_index));
-            cv::Mat img_depth = cv::imread(dataset_path_ + "/" + depth_filenames_.at(ts_rgbd_index), CV_LOAD_IMAGE_ANYDEPTH);
+            cv::Mat img_depth = cv::imread(dataset_path_ + "/" + depth_filenames_.at(ts_rgbd_index), cv::IMREAD_ANYDEPTH);
 
             addFrame(num_frames_,
                      img_rgb,
@@ -252,7 +252,7 @@ Dataset::Dataset(std::string dataset_path, int dataset_type):
                 
 
                 cv::Mat img_rgb = cv::imread( s_rgb );
-                cv::Mat img_depth = cv::imread( s_depth, CV_LOAD_IMAGE_ANYDEPTH );
+                cv::Mat img_depth = cv::imread( s_depth, cv::IMREAD_ANYDEPTH );
 
                 // Tenemos que corregir las imagenes depth
                 // en este dataset los valores no validos le ponen un valor de 65535
@@ -314,7 +314,7 @@ Dataset::Dataset(std::string dataset_path, int dataset_type):
                 
 
                 cv::Mat img_rgb = cv::imread( s_rgb );
-                cv::Mat img_depth = cv::imread( s_depth, CV_LOAD_IMAGE_ANYDEPTH );
+                cv::Mat img_depth = cv::imread( s_depth, cv::IMREAD_ANYDEPTH );
 
                 // Tenemos que corregir las imagenes depth
                 for (int row = 0; row < 640; ++row)
@@ -364,7 +364,7 @@ cv::Mat Dataset::getDepthImage(int frame){
         return depth_images_.at(frame);
     }
     else {
-        cv::Mat img = cv::imread(dataset_path_ + depth_filenames_.at(frame), CV_LOAD_IMAGE_ANYDEPTH);
+        cv::Mat img = cv::imread(dataset_path_ + depth_filenames_.at(frame), cv::IMREAD_ANYDEPTH);
         depth_images_.insert(std::pair<uint32_t, cv::Mat>(frame, img));
         return img;
     }
